@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ' This Document create a new user with IAM policies setup for using FIS'
+Parameters:
+  Password:
+    NoEcho: 'true'
+    Type: String
+    Description: New account password
+    MinLength: '1'
+    MaxLength: '41'
+    ConstraintDescription: The password must be between 1 and 41 characters
+Resources:
+  FISUser:
+    Type: AWS::IAM::User
+    Properties:
+      LoginProfile:
+        Password: !Ref 'Password'
+  FISUserPolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: FISUser
+      Users:
+       - !Ref 'FISUser'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: FISPermissions
+          Effect: Allow
+          Action:
+          - fis:*
+          Resource: "*"
+        - Sid: ReadOnlyActions
+          Effect: Allow
+          Action:
+          - ssm:Describe*
+          - ssm:Get*
+          - ssm:List*
+          - ec2:DescribeInstances
+          - rds:DescribeDBClusters
+          - ecs:DescribeClusters
+          - ecs:ListContainerInstances
+          - eks:DescribeNodegroup
+          - cloudwatch:DescribeAlarms
+          - iam:ListRoles
+          Resource: "*"
+        - Sid: IAMPassRolePermissions
+          Effect: Allow
+          Action:
+          - iam:PassRole
+          Resource: arn:aws:iam::111122223333:role/roleName
+        - Sid: PermissionsToCreateServiceLinkedRole
+          Effect: Allow
+          Action: iam:CreateServiceLinkedRole
+          Resource: "*"
+          Condition:
+            StringEquals:
+              iam:AWSServiceName: fis.amazonaws.com
+  FISUserkeys:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref 'FISUser'
+Outputs:
+  AccessKey:
+    Value: !Ref 'FISUserkeys'
+    Description: Access ID of new user
+  SecretKey:
+    Value: !GetAtt [FISUserkeys, SecretAccessKey]
+    Description: Secret key of new user

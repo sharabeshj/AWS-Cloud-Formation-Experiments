@@ -1,0 +1,47 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AMT EKS Cluster - Control Plane'
+
+Parameters:
+  ResourcePrefixName:
+    Type: String
+    Default: "amt-eks-common-snd"
+    Description: "Resource Name to be added in resources name"
+
+  Subnets:
+    Type: "List<AWS::EC2::Subnet::Id>"
+    Description: Choose the subnets in your VPC where your worker nodes will run.
+    Default: "subnet-041b7e9d809cb1ad3,subnet-0bf9752ca2c5a9017"
+  
+  ControlPlaneSecurityGroup:
+    Type: String
+    Description: EKS Control Plane Security Group
+    Default: "sg-0bbc36b270f7f3228"
+
+  ControlPlaneIAMRoleArn:
+    Type: String
+    Description: Select the IAM Role to allow Amazon EKS and the Kubernetes control plane to manage AWS resources on your behalf.
+    Default: "arn:aws:iam::702436145673:role/amt-eks-control-plane-role-us-east-1"
+
+Resources:
+  amtEksSanduseast1:
+    Type: 'AWS::EKS::Cluster'
+    Properties:
+      Name: !Join
+      - '-'
+      - - !Ref ResourcePrefixName
+        - !Ref 'AWS::Region'
+      Version: '1.20'
+      RoleArn: !Ref ControlPlaneIAMRoleArn
+      ResourcesVpcConfig:
+        SecurityGroupIds: [!Ref ControlPlaneSecurityGroup]
+        SubnetIds: !Ref Subnets
+
+Outputs:
+  ClusterArn:
+    Value: !GetAtt amtEksSanduseast1.Arn
+  ClusterCertData:
+    Value: !GetAtt amtEksSanduseast1.CertificateAuthorityData
+  ClusterEndpoint:
+    Value: !GetAtt amtEksSanduseast1.Endpoint
+          

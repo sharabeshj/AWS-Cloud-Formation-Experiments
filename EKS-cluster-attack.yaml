@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  EKSFisRole:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://test-public-access-sharabesh.s3.amazonaws.com/IAM-fis-role.yaml
+  ControlPaneIAMRole:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://test-public-access-sharabesh.s3.amazonaws.com/iam-role-cfn.yaml
+  ControlPaneSecurityGroup:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://test-public-access-sharabesh.s3.amazonaws.com/security-group.yaml
+  EKSCluster:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://test-public-access-sharabesh.s3.amazonaws.com/eks-cluster.yaml
+      Parameters:
+        ControlPlaneSecurityGroup: !GetAtt [ControlPaneSecurityGroup, Outputs.ControlPlaneSecurityGroup]
+        ControlPlaneIAMRoleArn: !GetAtt [ControlPaneIAMRole, Outputs.ControlPlaneRole]
+    DependsOn: 
+      - ControlPaneIAMRole
+      - ControlPaneSecurityGroup
+  EKSNodeGroup:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://test-public-access-sharabesh.s3.amazonaws.com/eks-nodegroup.yaml
+      Parameters:
+        ClusterControlPlaneSecurityGroup: !GetAtt [ControlPaneSecurityGroup, Outputs.ControlPlaneSecurityGroup]
+        NodeInstanceProfile: !GetAtt [ControlPaneIAMRole, Outputs.NodeInstanceProfile]
+        NodeSecurityGroup: !GetAtt [ControlPaneSecurityGroup, Outputs.NodeSecurityGroup]
+    DependsOn: 
+      - EKSCluster
+  EKSClusterAttackExperiment:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Actions:
+        EKS-Terminate-nodes:
+          ActionId: aws:eks:terminate-nodegroup-instance
+          Parameters:
+            InstanceTerminationPercentage: 50
+          Targets:
+            Clusters: Cluster-Target-1
+      Description: EKS Cluster terminate nodes
+      RoleArn: !GetAtt [EKSFisRole, Outputs.RoleArn]
+      Tags: 
+        AWS_FIS_POC: ""
+      Targets:
+        cluster-Target-1:
+          ResourceTags:
+            AWS_FIS_POC: ""
+          ResourceType: aws:eks:nodegroup
+          SelectionMode: ALL
+      StopConditions:
+        - Source: none
+    DependsOn: 
+      - EKSNodeGroup
+Outputs:
+  ExperimentTemplateId:
+    Value: !Ref 'EKSClusterAttackExperiment'

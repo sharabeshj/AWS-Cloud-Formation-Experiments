@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  Ec2FisRole:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://test-public-access-sharabesh.s3.amazonaws.com/IAM-fis-role.yaml
+  Ec2Instance1:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://test-public-access-sharabesh.s3.amazonaws.com/EC2-instance-stack.yml
+  CPUStressExperiment:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Actions:
+        Send_CPU_stress_command:
+          ActionId: aws:ssm:send-command
+          Parameters:
+            documentArn: arn:aws:ssm:us-east-2:702436145673:document/CPU-Stress
+            documentParameters: "{\"Duration\":\"600\"}"
+            duration: PT1M
+          Targets:
+            Instances: Instances-Target-1
+      Description: CPU stress and monitoring
+      RoleArn: !GetAtt [Ec2FisRole, Outputs.RoleArn]
+      Tags: 
+        AWS_FIS_POC: ""
+      Targets:
+        Instances-Target-1:
+          ResourceArns:
+            - !Join ['',['arn:aws:ec2:us-east-1:702436145673:instance/', !GetAtt [Ec2Instance1, Outputs.InstanceId]]]
+          ResourceType: aws:ec2:instance
+          SelectionMode: ALL
+      StopConditions:
+        - Source: none
+    DependsOn: 
+      - Ec2FisRole
+      - Ec2Instance1
+Outputs:
+  ExperimentTemplateId:
+    Value: !Ref 'CPUStressExperiment'

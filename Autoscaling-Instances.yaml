@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  Ec2FisRole:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://test-public-access-sharabesh.s3.amazonaws.com/IAM-fis-role.yaml
+  Ec2ASG:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://test-public-access-sharabesh.s3.amazonaws.com/AutoScalingGroup.yaml
+
+  AutoScalingIntancesExperiment:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Actions:
+        Terminate-instances:
+          ActionId: aws:ec2:terminate-instances
+          Targets:
+            Instances: Instances-Target-1
+      Description: Autoscaling terminated instances
+      RoleArn: !GetAtt [Ec2FisRole, Outputs.RoleArn]
+      Tags: 
+        AWS_FIS_POC: ""
+      Targets:
+        Instances-Target-1:
+          ResourceTags:
+            aws:cloudformation:logical-id: WebServerGroup
+          ResourceType: aws:ec2:instance
+          SelectionMode: PERCENT(50)
+      StopConditions:
+        - Source: none
+    DependsOn: 
+      - Ec2FisRole
+      - Ec2ASG
+Outputs:
+  ExperimentTemplateId:
+    Value: !Ref 'AutoScalingIntancesExperiment'

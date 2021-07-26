@@ -1,0 +1,82 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AMT EKS Service Role'
+
+Parameters:
+  ResourcePrefixName:
+    Type: String
+    Default: "amt-eks"
+    Description: "Resource Prefix Name to be added in resources name"
+
+Resources:
+  amtEksServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+      - '-'
+      - - !Ref ResourcePrefixName
+        - 'control-plane-role'
+        - !Ref 'AWS::Region'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - eks.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+      Path: /
+
+  amtEksNodeInstanceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Join
+      - '-'
+      - - !Ref ResourcePrefixName
+        - 'node-instance-role'
+        - !Ref 'AWS::Region'
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        - "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      Path: /
+  
+  amtNodeInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      InstanceProfileName: !Join
+      - '-'
+      - - !Ref ResourcePrefixName
+        - 'node-instance-role'
+        - !Ref 'AWS::Region'
+      Path: /
+      Roles:
+        - Ref: amtEksNodeInstanceRole
+
+Outputs:
+  ControlPlaneRole:
+    Description: The role that Amazon EKS will use to create AWS resources for Kubernetes clusters
+    Value: !GetAtt amtEksServiceRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-RoleArn"
+
+  NodeInstanceRole:
+    Description: The node instance role
+    Value: !GetAtt amtEksNodeInstanceRole.Arn
+  
+  NodeInstanceProfile:
+    Description: The node instance profile for worker nodes
+    Value: !GetAtt amtNodeInstanceProfile.Arn

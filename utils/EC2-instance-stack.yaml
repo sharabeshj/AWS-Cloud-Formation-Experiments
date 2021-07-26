@@ -33,15 +33,18 @@ Parameters:
     Default: vpc-048da3c1ea8519906
   SubnetId:
     Type: String
-    Default: subnet-0bf9752ca2c5a9017 
+    Default: fmrco-pr108080-sbx-us-east-1a-sbt 
 Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: !Ref 'InstanceType'
       SubnetId: !Ref 'SubnetId'
-      SecurityGroups: [!Ref 'InstanceSecurityGroup']
+      SecurityGroupIds: [!Ref 'InstanceSecurityGroup']
       ImageId: !Ref 'LatestAmiId'
+      Tags:
+        - Key: AWS_FIS_POC
+          Value: "" 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -59,11 +62,5 @@ Outputs:
   AZ:
     Description: Availability Zone of the newly created EC2 instance
     Value: !GetAtt [EC2Instance, AvailabilityZone]
-  PublicDNS:
-    Description: Public DNSName of the newly created EC2 instance
-    Value: !GetAtt [EC2Instance, PublicDnsName]
-  PublicIP:
-    Description: Public IP address of the newly created EC2 instance
-    Value: !GetAtt [EC2Instance, PublicIp]
 
 

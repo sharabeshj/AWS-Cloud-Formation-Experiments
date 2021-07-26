@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  DBName:
+    Default: fisTestCluster
+    Description: The database name
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+Resources:
+  RDSFisRole:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://test-public-access-sharabesh.s3.amazonaws.com/IAM-fis-role.yaml
+  RDSCluster:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://test-public-access-sharabesh.s3.amazonaws.com/RDS_MySQL_With_Read_Replica.yaml
+      Parameters:
+        DBName: !Ref 'DBName'
+        DBUser: admin
+        DBPassword: shara1234
+  RDSFailoversExperiment:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Actions:
+        RDS-failover:
+          ActionId: aws:rds:failover-db-cluster
+          Targets:
+            Clusters: Cluster-Target-1
+      Description: RDS Failover
+      RoleArn: !GetAtt [RDSFisRole, Outputs.RoleArn]
+      Tags: 
+        AWS_FIS_POC: ""
+      Targets:
+        cluster-Target-1:
+          ResourceArns:
+            - !Join ['',['arn:aws:rds:us-east-1:702436145673:cluster:', !Ref 'DBName']]
+          ResourceType: aws:rds:cluster
+          SelectionMode: ALL
+      StopConditions:
+        - Source: none
+    DependsOn: 
+      - RDSFisRole
+      - RDSCluster
+Outputs:
+  ExperimentTemplateId:
+    Value: !Ref 'RDSFailoversExperiment'
